@@ -6,7 +6,9 @@ from streamlit_folium import st_folium
 import os
 from dotenv import load_dotenv
 
+# ---------------------------
 # Load environment variables
+# ---------------------------
 load_dotenv()
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 if not GOOGLE_API_KEY:
@@ -28,23 +30,20 @@ def calculate_indices(df):
     results = []
 
     for _, row in df.iterrows():
-        Fe = row.get("Fe (ppm)")
-        As = row.get("As (ppb)")
-        U = row.get("U (ppb)")
-
+        Fe, As, U = row.get("Fe (ppm)"), row.get("As (ppb)"), row.get("U (ppb)")
         if pd.isna(Fe) or pd.isna(As) or pd.isna(U):
             continue
 
-        CF_Fe = Fe / standard_limits["Fe (ppm)"]
-        CF_As = As / standard_limits["As (ppb)"]
-        CF_U = U / standard_limits["U (ppb)"]
-
+        CF_Fe, CF_As, CF_U = Fe / standard_limits["Fe (ppm)"], As / standard_limits["As (ppb)"], U / standard_limits["U (ppb)"]
         PLI = (CF_Fe * CF_As * CF_U) ** (1 / 3)
         HPI = (CF_Fe + CF_As + CF_U) / 3 * 100
         HEI = CF_Fe + CF_As + CF_U
         Cd = HEI
-
         status = "Safe" if HPI < 100 else "Marginal" if HPI < 200 else "Polluted"
+
+        # Convert complex PLI to real (Streamlit cannot handle complex128)
+        if isinstance(PLI, complex):
+            PLI = PLI.real
 
         results.append({
             "Location": row.get("Location"),
@@ -97,7 +96,6 @@ def main():
         st.info("Please upload a CSV file to proceed.")
         return
 
-    # Load & merge data
     try:
         df, indices_df = load_and_merge(uploaded_file)
         st.success("✅ Data loaded & indices calculated")
@@ -105,13 +103,15 @@ def main():
         st.error(f"Error loading or processing data: {e}")
         return
 
+    # ---------------------------
     # Show processed data
+    # ---------------------------
     with st.expander("📋 Show first few rows of processed data"):
-        st.dataframe(df.head(), use_container_width=True)
+        st.dataframe(df.head(), width='stretch')
 
-    # -------------------
+    # ---------------------------
     # Download Calculated Indices
-    # -------------------
+    # ---------------------------
     csv_data = indices_df.to_csv(index=False).encode('utf-8')
     st.download_button(
         label="💾 Download Calculated Indices as CSV",
@@ -120,49 +120,43 @@ def main():
         mime="text/csv"
     )
 
-    # -------------------
-    # Charts & Plots
-    # -------------------
+    # ---------------------------
+    # Charts
+    # ---------------------------
     st.subheader("📊 Pollution Status Charts")
     col1, col2 = st.columns(2)
 
     with col1:
         fig_pie = px.pie(indices_df, names="Status", title="Safe vs Unsafe Water Sources")
-        st.plotly_chart(fig_pie, use_container_width=True)
+        st.plotly_chart(fig_pie, width='stretch')
 
     with col2:
         fig_bar = px.bar(indices_df, x="Location", y="HPI", color="Status", title="HPI by Location")
-        st.plotly_chart(fig_bar, use_container_width=True)
+        st.plotly_chart(fig_bar, width='stretch')
 
-    # Plotly Map
-    st.subheader("🗺️ Geographical Visualization (Plotly)")
-    fig_map = px.scatter_mapbox(
-        indices_df,
+    # ---------------------------
+    # Map (Plotly)
+    # ---------------------------
+    st.subheader("🗺️ Geographical Visualization")
+    fig_map = px.scatter_map(
+        indices_df,  # scatter_map instead of deprecated scatter_mapbox
         lat="Latitude",
         lon="Longitude",
         color="Status",
         hover_name="Location",
         size_max=15,
-        mapbox_style="carto-positron",
-        zoom=4,
         title="Heavy Metal Pollution Map"
     )
-    st.plotly_chart(fig_map, use_container_width=True)
+    st.plotly_chart(fig_map, width='stretch')
 
-    # Folium Map
+    # ---------------------------
+    # Interactive Map (Folium)
+    # ---------------------------
     st.subheader("🌐 Interactive Map (Folium)")
-    m = folium.Map(
-        location=[indices_df["Latitude"].mean(), indices_df["Longitude"].mean()],
-        zoom_start=5
-    )
+    m = folium.Map(location=[indices_df["Latitude"].mean(), indices_df["Longitude"].mean()], zoom_start=5)
     for _, row in indices_df.iterrows():
         color = "green" if row["Status"] == "Safe" else "orange" if row["Status"] == "Marginal" else "red"
-        popup_text = f"""
-        <b>{row['Location']}</b><br>
-        HPI: {row['HPI']:.2f}<br>
-        HEI: {row['HEI']:.2f}<br>
-        Status: {row['Status']}
-        """
+        popup_text = f"<b>{row['Location']}</b><br>HPI: {row['HPI']:.2f}<br>HEI: {row['HEI']:.2f}<br>Status: {row['Status']}"
         folium.CircleMarker(
             location=[row["Latitude"], row["Longitude"]],
             radius=6,
@@ -172,12 +166,12 @@ def main():
             fill_opacity=0.7,
             popup=popup_text
         ).add_to(m)
-    st_folium(m, width='100%', height=500)
+    st_folium(m, width=700, height=500)
 
-    # -------------------
+    # ---------------------------
     # Chatbot
-    # -------------------
-    st.subheader("💬 Ask your question about groundwater pollution")
+    # ---------------------------
+    st.subheader("💬 Ask questions about groundwater pollution")
     user_query = st.text_input("Type your question in simple English")
 
     if user_query:
@@ -190,6 +184,7 @@ def main():
         except Exception as e:
             st.error(f"Error in agent response: {e}")
 
+    # Example queries
     st.markdown("### Example queries you can try:")
     st.markdown("- Which locations are polluted in 2023?")
     st.markdown("- Top 5 safe water sources by HPI in [District/State].")
