@@ -1,0 +1,19 @@
+# Streamlit & environment
+streamlit>=1.25.0
+python-dotenv>=1.0.0
+
+# Data processing
+pandas>=2.1.0
+numpy>=1.25.0
+
+# Visualization
+plotly>=5.16.0
+folium>=0.17.1
+streamlit-folium>=0.10.0
+
+# LangChain + Google Gemini LLM
+langchain>=0.1.0
+langchain-google-genai>=0.1.0
+
+# Optional: for nicer tables in Streamlit
+tabulate>=0.9.0
