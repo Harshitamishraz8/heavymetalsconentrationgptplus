@@ -4,16 +4,24 @@ import plotly.express as px
 import folium
 from streamlit_folium import st_folium
 import os
-from dotenv import load_dotenv
 
 # ---------------------------
-# Load environment variables
+# Get Google API key
 # ---------------------------
-load_dotenv()
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+# For local testing, you can still use dotenv
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # optional, local only
+except:
+    pass
+
+# Use Streamlit secrets first, fallback to environment variable
+GOOGLE_API_KEY = st.secrets.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
 if not GOOGLE_API_KEY:
-    raise ValueError("❌ Google API key not found. Put GOOGLE_API_KEY=your_key in .env")
-
+    raise ValueError(
+        "❌ Google API key not found. Please set it in Streamlit secrets or .env file."
+    )
 # ---------------------------
 # LangChain imports
 # ---------------------------
