@@ -16,7 +16,6 @@ langchain==0.3.7
 langchain-core==0.3.19
 langchain-google-genai==2.0.6
 langchain-text-splitters==0.3.2
-langchain-experimental==0.3.4
 
 # Google Generative AI SDK
 google-ai-generativelanguage==0.6.8
