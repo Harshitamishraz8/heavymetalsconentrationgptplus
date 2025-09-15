@@ -61,6 +61,7 @@ def calculate_indices(df):
         })
     return pd.DataFrame(results)
 
+
 @st.cache_data
 def load_and_merge(file):
     df_raw = pd.read_csv(file)
@@ -71,7 +72,8 @@ def load_and_merge(file):
         on=["Location", "Longitude", "Latitude"],
         how="left"
     )
-    return merged, indices_df
+    return merged
+
 
 def setup_agent(df):
     """Setup LangChain agent for querying the DataFrame."""
@@ -99,7 +101,7 @@ def main():
 
     # Load & merge data
     try:
-        df, indices_df = load_and_merge(uploaded_file)
+        df = load_and_merge(uploaded_file)
         st.success("✅ Data loaded & indices calculated")
     except Exception as e:
         st.error(f"Error loading or processing data: {e}")
@@ -110,34 +112,23 @@ def main():
         st.dataframe(df.head(), use_container_width=True)
 
     # -------------------
-    # Download Calculated Indices
-    # -------------------
-    csv_data = indices_df.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label="💾 Download Calculated Indices as CSV",
-        data=csv_data,
-        file_name="groundwater_pollution_indices.csv",
-        mime="text/csv"
-    )
-
-    # -------------------
     # Charts & Plots
     # -------------------
     st.subheader("📊 Pollution Status Charts")
     col1, col2 = st.columns(2)
 
     with col1:
-        fig_pie = px.pie(indices_df, names="Status", title="Safe vs Unsafe Water Sources")
+        fig_pie = px.pie(df, names="Status", title="Safe vs Unsafe Water Sources")
         st.plotly_chart(fig_pie, use_container_width=True)
 
     with col2:
-        fig_bar = px.bar(indices_df, x="Location", y="HPI", color="Status", title="HPI by Location")
+        fig_bar = px.bar(df, x="Location", y="HPI", color="Status", title="HPI by Location")
         st.plotly_chart(fig_bar, use_container_width=True)
 
     # Plotly Map
     st.subheader("🗺️ Geographical Visualization (Plotly)")
     fig_map = px.scatter_mapbox(
-        indices_df,
+        df,
         lat="Latitude",
         lon="Longitude",
         color="Status",
@@ -152,10 +143,10 @@ def main():
     # Folium Map
     st.subheader("🌐 Interactive Map (Folium)")
     m = folium.Map(
-        location=[indices_df["Latitude"].mean(), indices_df["Longitude"].mean()],
+        location=[df["Latitude"].mean(), df["Longitude"].mean()],
         zoom_start=5
     )
-    for _, row in indices_df.iterrows():
+    for _, row in df.iterrows():
         color = "green" if row["Status"] == "Safe" else "orange" if row["Status"] == "Marginal" else "red"
         popup_text = f"""
         <b>{row['Location']}</b><br>
