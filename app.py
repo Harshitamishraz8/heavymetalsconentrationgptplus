@@ -1,22 +1,27 @@
-import os
 import pandas as pd
 import streamlit as st
 import plotly.express as px
 import folium
 from streamlit_folium import st_folium
+import os
 from dotenv import load_dotenv
 
-# ---------------------------
-# Load API Key (Secrets first, then .env)
-# ---------------------------
-GOOGLE_API_KEY = st.secrets.get("GOOGLE_API_KEY")
+# Load environment variables
+GOOGLE_API_KEY = None
 
+# Try Streamlit secrets (Cloud only)
+try:
+    GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
+except Exception:
+    pass
+
+# Fallback to .env (Local dev)
 if not GOOGLE_API_KEY:
     load_dotenv()
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 if not GOOGLE_API_KEY:
-    raise ValueError("❌ Google API key not found. Set it in Streamlit secrets or .env")
+    raise ValueError("❌ Google API key not found. Set it in Streamlit secrets (Cloud) or in .env (Local)")
 
 # ---------------------------
 # LangChain imports
